@@ -49,8 +49,9 @@ Config options:
 - Parity = None
 - Flow control = None
 
-    sudo putty /dev/ttyUSB0 -serial -sercfg 9600,8,n,1,N
-
+```console
+sudo putty /dev/ttyUSB0 -serial -sercfg 9600,8,n,1,N
+```
 
 ### References and useful links
 - [STM32F103xx datasheet](https://www.st.com/resource/en/datasheet/stm32f103c8.pdf)

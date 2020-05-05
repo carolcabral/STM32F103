@@ -2,7 +2,7 @@
 
 This repository contains my libraries to use STM32F103C8T6 peripherals. It is written in C++ and uses Eclipse + OpenOCD + STLink-V2 to debug the bluepill board. It depends on *stdPeriph* libraries.
  
-###### Bluepill specifications
+#### Bluepill specifications
 * STM32F103C8T6 microcontroller (ARM Cortex-M3)
 * 72MHz
 * Flash: 64/128 KB
@@ -20,7 +20,7 @@ This repository contains my libraries to use STM32F103C8T6 peripherals. It is wr
 
 ![Bluepill pinout](https://solovjov.net/reblag.dk/The-Generic-STM32F103-Pinout-Diagram.jpg)
 
-###### Memory and bus architecture 
+#### Memory and bus architecture 
 
 Clock domains for each peripheral:
 
@@ -38,9 +38,10 @@ DMA channels for each peripheral:
 ### OpenOCD Configurations
 Config options: 
 
-    -f /usr/share/openocd/scripts/board/bluepill.cfg
-	-f interface/stlink-v2.cfg 
-
+```console
+-f /usr/share/openocd/scripts/board/bluepill.cfg
+-f interface/stlink-v2.cfg 
+```
 
 ### Putty command (Debugging via UART)
 - Baud rate = 9600 (user defined)

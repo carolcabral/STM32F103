@@ -21,13 +21,9 @@ This repository contains my libraries to use STM32F103C8T6 peripherals. It is wr
 ![Bluepill pinout](https://solovjov.net/reblag.dk/The-Generic-STM32F103-Pinout-Diagram.jpg)
 
 #### Memory and bus architecture 
-
 Clock domains for each peripheral:
 
 ![Bus architecture](images/busarchitecture.png)
-
-* AHB and APB2  operates at full speeed (72MHz)
-* APB1 is limited to **36MHz**
 
 
 DMA channels for each peripheral:
@@ -35,15 +31,24 @@ DMA channels for each peripheral:
 ![DMA request mapping](images/dma1.PNG)
 ![DMA request mapping](images/dma2.png)
 
-### OpenOCD Configurations
-Config options: 
+### Project configurations
+
+###### Configure inc and src folder
+```console
+Project > Properties > C/C++ General > Path and Symbols > Includes > GNU C++
+
+Project > Properties > C/C++ General > Path and Symbols > Source Location
+```
+##### OpenOCD Configurations
 
 ```console
+Debug Configurations > GDB OpenOCD Debbuging > Debugger > Config Options:
+
 -f /usr/share/openocd/scripts/board/bluepill.cfg
 -f interface/stlink-v2.cfg 
 ```
 
-### Putty command (Debugging via UART)
+##### Putty command (Debugging via UART)
 - Baud rate = 9600 (user defined)
 - Data bit = 8
 - Stop bits = 1
@@ -54,6 +59,52 @@ Config options:
 sudo putty /dev/ttyUSB0 -serial -sercfg 9600,8,n,1,N
 ```
 
+
+
+
+### Third-Party 
+#### FatFS (SDCard using SPI)
+
+#### FreeRTOS
+
+### Drivers
+#### Clock
+
+Clock sources (SYSCLK):
+	- HSI Oscillator Clock
+	- HSE Oscillator Clock
+	- PLL Clock
+Secondary clock sources?
+	- LSI RC (40kHz)
+	- LSE crystal (32.768kHz)
+
+* AHB and APB2  operates at full speeed (72MHz)
+* APB1 is limited to **36MHz**
+
+![Clock configuration](images/clock.jpg)
+
+* Current function only sets to 72MHz
+
+### RTC
+Clock sources (RTCCLK):
+	- HSE/128 (62.5KHz)
+	- LSE clock (32.768kHz)
+	- LSI clock (40KHz)
+
+* Current functions supports LSE as source
+* Wrong time zone configuration
+
+
+### To Do:
+- [ ] Clock configuration
+	- Configure other clock speeds 
+	- Modify while HSE RDY
+- [ ] RTC: Wrong time zone configuration
+- [ ] Modify Delay for TIMx (instead of only TIM4)
+- [ ] Add ADCx channels (only working for channels 0 and 6)
+- [ ] Error Handling (enum Error_Type inside each class)
+- [ ] Rewrite SD library
+
 ### References and useful links
 - [STM32F103xx datasheet](https://www.st.com/resource/en/datasheet/stm32f103c8.pdf)
 
@@ -62,3 +113,5 @@ sudo putty /dev/ttyUSB0 -serial -sercfg 9600,8,n,1,N
 - [Description of STM32F2xx Standard Peripheral LIbrary](https://www.st.com/resource/en/user_manual/dm00023896-description-of-stm32f2xx-standard-peripheral-library-stmicroelectronics.pdf)
 
 - [Eddie Amaya's youtube channel](https://www.youtube.com/watch?v=EX7g3_NUDgk&list=PLmY3zqJJdVeNIZ8z_yw7Db9ej3FVG0iLy) (great explanation for beginners!)
+
+- [Interfacing an SD Card](http://www.rjhcoding.com/avrc-sd-interface-4.php)

@@ -38,7 +38,7 @@ I2C::I2C(){
  * @retval	None
  ******************************************************************************
  */
-bool I2C::Initialization(I2C_TypeDef* I2Cx, uint32_t clock = 400000){
+bool I2C::Initialization(I2C_TypeDef* I2Cx, uint32_t clock){
 
 	this->I2Cx = I2Cx;
 	if (I2Cx == I2C1)
@@ -66,40 +66,34 @@ bool I2C::Initialization(I2C_TypeDef* I2Cx, uint32_t clock = 400000){
 	I2C_InitTypeDef I2C_InitStruct;
 	GPIO_InitTypeDef GPIO_InitStruct;
 
-	while(true)
-	{
+	// Step 2: Initialize GPIO as open drain alternate function
+	//RCC_APB2PeriphResetCmd(I2C_GPIO_RCC,ENABLE);
+	//RCC_APB2PeriphResetCmd(I2C_GPIO_RCC,DISABLE);
 
-		// Step 2: Initialize GPIO as open drain alternate function
-		RCC_APB2PeriphResetCmd(I2C_GPIO_RCC,ENABLE);
-		RCC_APB2PeriphResetCmd(I2C_GPIO_RCC,DISABLE);
+	RCC_APB2PeriphClockCmd(I2C_GPIO_RCC, ENABLE);
+	GPIO_InitStruct.GPIO_Pin = I2C_PIN_SCL | I2C_PIN_SDA;
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF_OD;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(I2C_GPIOx, &GPIO_InitStruct);
 
-		RCC_APB2PeriphClockCmd(I2C_GPIO_RCC, ENABLE);
-		GPIO_InitStruct.GPIO_Pin = I2C_PIN_SCL | I2C_PIN_SDA;
-		GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF_OD;
-		GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;
-		GPIO_Init(I2C_GPIOx, &GPIO_InitStruct);
+	// Step 1: Initialize I2C
+	I2C_InitStruct.I2C_Mode = I2C_Mode_I2C;
+	I2C_InitStruct.I2C_DutyCycle = I2C_DutyCycle_2;
+	I2C_InitStruct.I2C_OwnAddress1 = 0x00;
+	I2C_InitStruct.I2C_Ack = I2C_Ack_Enable;
+	I2C_InitStruct.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
+	I2C_InitStruct.I2C_ClockSpeed = clock ;
 
-		// Step 1: Initialize I2C
-		I2C_InitStruct.I2C_Mode = I2C_Mode_I2C;
-		I2C_InitStruct.I2C_DutyCycle = I2C_DutyCycle_2;
-		I2C_InitStruct.I2C_OwnAddress1 = 0x00;
-		I2C_InitStruct.I2C_Ack = I2C_Ack_Enable;
-		I2C_InitStruct.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
-		I2C_InitStruct.I2C_ClockSpeed = clock ;
-		I2C_Init(I2Cx, &I2C_InitStruct);
+	/* I2C1 Reset */
+	RCC_APB1PeriphResetCmd(I2Cx_RCC,ENABLE);
 
-		/* I2C1 Reset */
-		/* I2C1 Reset */
-		RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C2,ENABLE);
-		RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C2,DISABLE);
-		RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C2, ENABLE);
-		I2C_DeInit(I2C2);
-		I2C_Init(I2C2, &I2C_InitStruct);
-		I2C_Cmd(I2C2, ENABLE);
+	RCC_APB1PeriphResetCmd(I2Cx_RCC,DISABLE);
+	RCC_APB1PeriphClockCmd(I2Cx_RCC, ENABLE);
+	I2C_DeInit(I2Cx);
+	I2C_Init(I2Cx, &I2C_InitStruct);
+	I2C_Cmd(I2Cx, ENABLE);
 
-		return true;
-
-	}
+	return true;
 }
 
 /**
@@ -128,7 +122,7 @@ bool I2C::Reset(void)
 	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_10MHz;
 	GPIO_Init(I2C_GPIOx, &GPIO_InitStruct);
 
-	GPIO_SetBits(I2C_GPIOx,I2C_PIN_SCL|I2C_PIN_SDA);
+	GPIO_SetBits(I2C_GPIOx, I2C_PIN_SCL|I2C_PIN_SDA);
 
 	//3 - Check SCL and SDA High level in GPIOx_IDR.
 	if (GPIO_ReadOutputDataBit(I2C_GPIOx, I2C_PIN_SCL) == Bit_RESET) {
@@ -218,14 +212,24 @@ bool I2C::Reset(void)
 
 
 bool I2C::I2Cwrite(uint8_t address, uint8_t *data, uint8_t len){
-	sendStart();
-	addressDirection(address, I2C_Direction_Transmitter);
+	bool status = true;
+
+	status &= sendStart();
+	status &= addressDirection(address, I2C_Direction_Transmitter);
+
+	if (status == 0){
+		sendStop();
+	}
+
+
 	for (int i = 0; i < len; i++){
-		sendByte(data[i]);
+		status &= sendByte(data[i]);
 	}
 
 	while(!I2C_CheckEvent(I2Cx,I2C_EVENT_MASTER_BYTE_TRANSMITTED));
 	sendStop();
+
+	return status;
 }
 
 /**
@@ -239,23 +243,72 @@ bool I2C::I2Cwrite(uint8_t address, uint8_t *data, uint8_t len){
  */
 
 bool I2C::I2Cread(uint8_t address, uint8_t *data, uint8_t len){
-	sendStart();
-	addressDirection(address,I2C_Direction_Receiver);
+	bool status = true;
 
-	for (int i = 0; i < len; i++){
+	status &= I2Cwrite (address, &data[0], 1);
+
+	status &= sendStart();
+	// Wait for I2C EV5.
+	// It means that the start condition has been correctly released
+	// on the I2C bus (the bus is free, no other devices is communicating))
+	while (!I2C_CheckEvent(I2Cx, I2C_EVENT_MASTER_MODE_SELECT));
+
+	status &= addressDirection(address,I2C_Direction_Receiver);
+
+	for (int i = 0; i < len-1; i++){
 		while_timeout(!I2C_CheckEvent(I2Cx, I2C_EVENT_MASTER_BYTE_RECEIVED));
 		data[i] = I2C_ReceiveData(I2Cx);
-		if ( i == (len-1) ){
+		if ( (len-i) == 1 ){
 			/*enable NACK bit */
-			I2C_NACKPositionConfig(I2C2, I2C_NACKPosition_Current);
-			I2C_AcknowledgeConfig(I2C2, DISABLE);
+			//I2C_NACKPositionConfig(I2Cx, I2C_NACKPosition_Current);
+			//I2C_AcknowledgeConfig(I2Cx, DISABLE);
 			sendStop();
+			status &= receiveNAck (data[i]);
+		} else {
+			status &= receiveAck (data[i]);
 		}
 	}
+	return status;
+}
+
+/**
+ ******************************************************************************
+ *	@brief	Receive data byte from I2C bus, then return ACK
+ * @param	None
+ * @retval	Received data byte
+ ******************************************************************************
+ */
+
+bool I2C::receiveAck(uint8_t &data){
+	// Enable ACK of received data
+	I2C_AcknowledgeConfig(I2Cx, ENABLE);
+	// Wait for I2C EV7
+	// It means that the data has been received in I2C data register
+	while_timeout(!I2C_CheckEvent(I2Cx, I2C_EVENT_MASTER_BYTE_RECEIVED));
+
+	// Read and return data byte from I2C data register
+	data = I2C_ReceiveData(I2Cx);
 	return true;
 }
 
+/******************************************************************************
+ *	@brief	Receive data byte from I2C bus, then return ACK
+ * @param	None
+ * @retval	Received data byte
+ ******************************************************************************
+ */
 
+bool I2C::receiveNAck(uint8_t &data){
+	// Enable ACK of received data
+	I2C_AcknowledgeConfig(I2Cx, DISABLE);
+	// Wait for I2C EV7
+	// It means that the data has been received in I2C data register
+	while_timeout(!I2C_CheckEvent(I2Cx, I2C_EVENT_MASTER_BYTE_RECEIVED));
+
+	// Read and return data byte from I2C data register
+	data = I2C_ReceiveData(I2Cx);
+	return true;
+}
 /**
  ******************************************************************************
  *	@brief	Generate I2C start condition
@@ -263,20 +316,9 @@ bool I2C::I2Cread(uint8_t address, uint8_t *data, uint8_t len){
  * @retval	None
  ******************************************************************************
  */
-bool I2C::sendStart()
-{
-	/*re-enable ACK bit incase it was disabled last call*/
-	I2C_AcknowledgeConfig(I2Cx, ENABLE);
-
-	uint32_t __Counter=2000;
-	while(I2C_GetFlagStatus(I2Cx, I2C_FLAG_BUSY))
-	{
-		__Counter--;
-		if (__Counter == 0UL){
-			__Counter=2000;
-			Reset();
-		}
-	}
+bool I2C::sendStart() {
+	while (I2C_GetFlagStatus(I2Cx, I2C_FLAG_BUSY));
+	Reset();
 
 	// Generate start condition
 	I2C_GenerateSTART(I2Cx, ENABLE);
@@ -286,9 +328,8 @@ bool I2C::sendStart()
 	// on the I2C bus (the bus is free, no other devices is communicating))
 
 	/* check start bit flag */
-	while(!I2C_GetFlagStatus(I2C2, I2C_FLAG_SB));
-	//while (!I2C_CheckEvent(I2Cx, I2C_EVENT_MASTER_MODE_SELECT))
-
+	while(!I2C_GetFlagStatus(I2Cx, I2C_FLAG_SB));
+	//while (!I2C_CheckEvent(I2Cx, I2C_EVENT_MASTER_MODE_SELECT));
 	return true;
 }
 
@@ -302,8 +343,8 @@ bool I2C::sendStart()
 bool I2C::sendStop()
 {
 	/* Send STOP Condition */
-	I2C_GenerateSTOP(I2C2, ENABLE);
-	while(I2C_GetFlagStatus(I2C2, I2C_FLAG_STOPF)); // stop bit flag
+	I2C_GenerateSTOP(I2Cx, ENABLE);
+	while(I2C_GetFlagStatus(I2Cx, I2C_FLAG_STOPF)); // stop bit flag
 	return true;
 }
 

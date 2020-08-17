@@ -3,6 +3,7 @@
 This repository contains my libraries to use STM32F103C8T6 peripherals. It is written in C++ and uses Eclipse + OpenOCD + STLink-V2 to debug the bluepill board. It depends on *stdPeriph* libraries.
  
 #### Bluepill specifications
+
 * STM32F103C8T6 microcontroller (ARM Cortex-M3)
 * 72MHz
 * Flash: 64/128 KB
@@ -68,6 +69,13 @@ sudo putty /dev/ttyUSB0 -serial -sercfg 9600,8,n,1,N
 #### FreeRTOS
 
 ### Drivers
+* clock.h
+* rtc.h
+* timer.h
+* uart.h
+* adc.h
+
+
 #### Clock
 
 Clock sources (SYSCLK):
@@ -87,6 +95,7 @@ Secondary clock sources?
 
 ### RTC
 Clock sources (RTCCLK):
+
 	- HSE/128 (62.5KHz)
 	- LSE clock (32.768kHz)
 	- LSI clock (40KHz)
@@ -94,6 +103,25 @@ Clock sources (RTCCLK):
 * Current functions supports LSE as source
 * Wrong time zone configuration
 
+### POWER
+Low power modes:
+	* Sleep
+	* Standby
+	* Stop
+### TIMER
+
+* Advanced control timers (TIM1 and TIM8)
+	- 16 bit auto-reload counter
+* General-purpose timers (TIM2 to TIM5)
+
+### ADC
+- 12 bits
+- Up to 18 multiplexed channels (16 external, 2 internal sources)
+- Data alignment (ADC->CR2 |= ALIGN)
+- The ADC input clock is synchonous with APB2 clock and it must **not exceed 14MHz**
+- Regular (up to 16 conversions) or injected (up to 4 conversions) groups
+- Single (CONT = 0) or continuous (CONT = 1) conversion mode 
+- Calibration (ADC->CR2 |= CAL)
 
 ### To Do:
 - [ ] Clock configuration

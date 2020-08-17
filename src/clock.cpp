@@ -15,13 +15,11 @@ void SetClock72(void){
 	while( !(RCC->CR & RCC_CR_HSERDY));
 
 	FLASH->ACR |= FLASH_ACR_PRFTBE;
-
-
 	FLASH->ACR &= ~(FLASH_ACR_LATENCY); //Clear
 	/*							LATENCY
 	 * 0 <  SYSCLK <= 24MHz			0
 	 * 24MHz < SYSCLK <= 48MHz 		1
-	 * 48MHz < SYSCLK <= 47MHz		2
+	 * 48MHz < SYSCLK <= 72MHz		2
 	*/
 	FLASH->ACR |= (uint32_t) 0x02;
 
@@ -31,7 +29,7 @@ void SetClock72(void){
 	RCC->CFGR &= ~(RCC_CFGR_PLLXTPRE); //HSE/2 if set
 	RCC->CFGR |= RCC_CFGR_PLLSRC; //Clk from PREDIV1 if set / HSI_CLK/2 if not
 	RCC->CFGR |= RCC_CFGR_PLLMULL9; //PLL multiplication factor
-	RCC->CFGR |= RCC_CFGR_HPRE_DIV2;
+	RCC->CFGR |= RCC_CFGR_HPRE_DIV1;
 	RCC->CFGR |= RCC_CFGR_PPRE1_DIV1;
 	RCC->CFGR |= RCC_CFGR_PPRE2_DIV1;
 

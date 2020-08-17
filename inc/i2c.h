@@ -41,13 +41,13 @@ public:
 	GPIO_TypeDef* 	I2C_GPIOx;
 	uint16_t 		I2C_PIN_SDA;
 	uint16_t 		I2C_PIN_SCL;
-	uint8_t 		Device;
-
 
 	I2C();
 	//BUG - I don't know the reason, but there are some valid clock
 	//that generate a hardware.
 	bool Initialization(I2C_TypeDef* I2Cx, uint32_t clock);
+
+
 	bool Reset(void);
 
 	bool I2Cwrite(uint8_t address, uint8_t *data, uint8_t len);
@@ -58,6 +58,9 @@ private:
 	bool sendStop();
 	bool addressDirection(uint8_t address, uint8_t direction);
 	bool sendByte(uint8_t byte);
+	bool receiveAck(uint8_t &data);
+	bool receiveNAck(uint8_t &data);
+
 
 
 };
